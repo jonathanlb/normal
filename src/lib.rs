@@ -76,6 +76,7 @@ impl<'a> Normal<'a> {
     }
 
     /// Return the ids of tokens matching the search string.
+    /// Use of SQL '%' wildcards is acceptable, and enables substring search.
     pub fn search(&'a self, value: &str) -> Result<impl 'a + Iterator<Item = i64>, NormalError> {
         let query = format!(
             "SELECT rowid FROM {} WHERE {} like ?",
@@ -106,7 +107,7 @@ impl<'a> Normal<'a> {
 
 #[derive(Clone, Debug)]
 pub struct NormalError {
-    msg: &'static str
+    pub msg: &'static str
 }
 
 impl fmt::Display for NormalError {
