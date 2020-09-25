@@ -24,7 +24,7 @@ fn it_inserts_values() {
 #[test]
 fn handles_missing_key_get() {
     let norm = new_table().unwrap();
-    assert_eq!(norm.get(87).unwrap_err().msg, "missing key");
+    assert_eq!(norm.get(87).unwrap_err().msg, "missing key: 87");
 }
 
 /// Ensure that we can search by substring.

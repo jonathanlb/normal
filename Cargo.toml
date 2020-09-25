@@ -12,7 +12,7 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "normal-util"
-path = "src/bin.rs"
+path = "src/normal_util.rs"
 
 [dependencies]
 sqlite = "0.25.3"
