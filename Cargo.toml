@@ -14,6 +14,10 @@ path = "src/lib.rs"
 name = "normal-util"
 path = "src/normal_util.rs"
 
+[[bin]]
+name = "id-pairs-util"
+path = "src/id_pairs_util.rs"
+
 [dependencies]
 sqlite = "0.25.3"
 structopt = "0.3.17"

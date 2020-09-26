@@ -4,24 +4,24 @@ use std::process::exit;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "example", about = "An example of StructOpt usage.")]
+#[structopt(name = "normal-util", about = "Normalization table utility routines.")]
 struct Opt {
-    #[structopt(short)]
+    #[structopt(short, long)]
     column: String,
 
     #[structopt(parse(from_os_str))]
     db: PathBuf,
 
-    #[structopt(short)]
+    #[structopt(short, long)]
     get: Option<i64>,
 
-    #[structopt(short)]
+    #[structopt(short, long)]
     insert: Option<String>,
 
-    #[structopt(short)]
+    #[structopt(short, long)]
     search: Option<String>,
 
-    #[structopt(short)]
+    #[structopt(short, long)]
     table: String,
 }
 
