@@ -23,6 +23,7 @@ impl<'a> Normal<'a> {
         })
     }
 
+    /// Create a normalization table with extra non-key columns.
     pub fn new_with_nonkeys<'b, T: AsRef<str>>(
         file_name: &str, table_name: &'b str, column_name: &'b str, nonkeys: impl Iterator<Item = T>
     ) -> Result<Normal<'b>, sqlite::Error> 
@@ -90,6 +91,7 @@ impl<'a> Normal<'a> {
         }
     }
 
+    /// Get the value from a non-key column.
     pub fn get_nonkey(&'a self, id: i64, column_name: &str) -> Result<String, NormalError> {
         let query = format!("SELECT {} FROM {} WHERE rowid={};",
             column_name, self.table_name, id);
@@ -123,6 +125,7 @@ impl<'a> Normal<'a> {
         }
     }
 
+    /// Associate a non-key value with a row.
     pub fn notate(&'a self, id: i64, column_name: &str, note: &str) -> Result<(), NormalError> {
         let query = format!("UPDATE {} SET {}=? WHERE rowid={};", self.table_name, column_name, id);
         let mut statement = self.conn.prepare(query).unwrap();
@@ -169,6 +172,7 @@ fn open(path: &str, table_name: &str, column_name: &str) -> Result<Connection, s
     Ok(conn)
 }
 
+/// Create a DB connection with non-key columns, adding them if necessary.
 fn open_with_nonkeys<'a, T: AsRef<str>>(
     path: &str, table_name: &str, column_name: &str, nonkeys: impl Iterator<Item = T>
 ) -> Result<Connection, sqlite::Error> 
