@@ -99,7 +99,7 @@ fn create_with_non_key() {
 #[test]
 fn updates_non_key() {
     let nonkeys = ["address", "mantra"];
-    let norm = Normal::new_with_nonkeys(":memory:", "names", "name", nonkeys.into_iter()).unwrap();
+    let norm = Normal::new_with_nonkeys(":memory:", "names", "name", nonkeys.iter()).unwrap();
     let id = norm.create("bilbo").unwrap();
     norm.notate(id, nonkeys.get(0).unwrap(), "Bag End").unwrap();
     assert_eq!(norm.get_nonkey(id, nonkeys.get(0).unwrap()).unwrap(), "Bag End");
