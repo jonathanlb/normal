@@ -86,3 +86,42 @@ fn ensure_keys_case_sensitive() {
     norm.create("JAZZ").unwrap();
     norm.create("jazz").unwrap();
 }
+
+/// It creates a table with non-key columns.
+#[test]
+fn create_with_non_key() {
+    let nonkeys = ["address", "mantra"];
+    let norm = Normal::new_with_nonkeys(":memory:", "names", "name", nonkeys.iter()).unwrap();
+    assert_eq!(norm.get_nonkeys(), nonkeys);
+}
+
+/// It can update non-key columns.
+#[test]
+fn updates_non_key() {
+    let nonkeys = ["address", "mantra"];
+    let norm = Normal::new_with_nonkeys(":memory:", "names", "name", nonkeys.into_iter()).unwrap();
+    let id = norm.create("bilbo").unwrap();
+    norm.notate(id, nonkeys.get(0).unwrap(), "Bag End").unwrap();
+    assert_eq!(norm.get_nonkey(id, nonkeys.get(0).unwrap()).unwrap(), "Bag End");
+}
+
+/// It returns error on missing non-key value
+#[test]
+fn error_on_missing_non_key_value() {
+    let nonkeys = ["address", "mantra"];
+    let norm = Normal::new_with_nonkeys(":memory:", "names", "name", nonkeys.iter()).unwrap();
+    let id = norm.create("bilbo").unwrap();
+    assert_eq!(
+        norm.get_nonkey(id, nonkeys.get(1).unwrap()).unwrap_err().msg, 
+        "uninitialized non-key column mantra for id 1: cannot read a text column");
+}
+
+/// It returns error on missing non-key column
+#[test]
+fn error_on_missing_column() {
+    let norm = new_table().unwrap();
+    let id = norm.create("bilbo").unwrap();
+    assert_eq!(
+        norm.get_nonkey(id, "superpower").unwrap_err().msg,
+        "missing non-key column superpower");
+} 

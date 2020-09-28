@@ -8,6 +8,11 @@ pub struct Normal<'a> {
     conn: Connection,
 }
 
+/// Boilerplate to safely unwrap sqlite error messages.
+macro_rules! unwrap_msg {
+    ($sql_err:expr) => ($sql_err.message.unwrap_or("???".to_string()))
+}
+
 impl<'a> Normal<'a> {
     /// Create a normalization table from a file name.
     pub fn new<'b>(file_name: &str, table_name: &'b str, column_name: &'b str) -> Result<Normal<'b>, sqlite::Error> {
@@ -15,6 +20,17 @@ impl<'a> Normal<'a> {
             table_name: table_name,
             column_name: column_name,
             conn: open(file_name, table_name, column_name)?,
+        })
+    }
+
+    pub fn new_with_nonkeys<'b, T: AsRef<str>>(
+        file_name: &str, table_name: &'b str, column_name: &'b str, nonkeys: impl Iterator<Item = T>
+    ) -> Result<Normal<'b>, sqlite::Error> 
+    {
+        Ok(Normal {
+            table_name: table_name,
+            column_name: column_name,
+            conn: open_with_nonkeys(file_name, table_name, column_name, nonkeys)?,
         })
     }
 
@@ -36,7 +52,7 @@ impl<'a> Normal<'a> {
         match statement.next() {
             Ok(State::Row) => Ok(statement.read::<i64>(0).unwrap()),
             Ok(State::Done) => Err(NormalError{msg: format!("failed to insert/find insertion for value: {}", value)}),
-            Err(e) => Err(NormalError{msg: format!("failed to insert value {}: {}", value, e.message.unwrap_or("???".to_string()))}),
+            Err(e) => Err(NormalError{msg: format!("failed to insert value {}: {}", value, unwrap_msg!(e))}),
         }
     }
 
@@ -51,6 +67,72 @@ impl<'a> Normal<'a> {
             Ok(State::Row) => Ok(statement.read::<String>(0).unwrap()),
             Ok(State::Done) => Err(NormalError{msg: format!("missing key: {}", id)}),
             Err(_) => Err(NormalError{msg: format!("cannot get key: {}", id)}),
+        }
+    }
+
+    /// Compute the non-key/notation column names.
+    pub fn get_nonkeys(&'a self) -> Vec<String> {
+        let query = format!("PRAGMA table_info({})", self.table_name);
+        let mut statement = self.conn.prepare(query).unwrap();
+        let mut nonkeys: Vec<String> = vec!();
+        loop {
+            match statement.next() {
+                Ok(State::Row) => {
+                    let column = statement.read::<String>(1).unwrap();
+                    println!("schema column: {}", column);
+                    if column != self.column_name {
+                        nonkeys.push(column.to_string());
+                    }
+                }
+                Ok(State::Done) => return nonkeys,
+                Err(e) => panic!(e)
+            }
+        }
+    }
+
+    pub fn get_nonkey(&'a self, id: i64, column_name: &str) -> Result<String, NormalError> {
+        let query = format!("SELECT {} FROM {} WHERE rowid={};",
+            column_name, self.table_name, id);
+        let statement_opt = self.conn.prepare(query);
+        if statement_opt.is_err() {
+            // let err = statement_opt.unwrap_err();
+            return Err(NormalError{
+                msg:format!("missing non-key column {}", column_name)
+            });
+        }
+
+        let mut statement = statement_opt.unwrap();
+        match statement.next() {
+            Ok(State::Row) => {
+                match statement.read::<String>(0) {
+                    Ok(value) => Ok(value),
+                    Err(e) => Err(NormalError{
+                        msg:format!("uninitialized non-key column {} for id {}: {}",
+                            column_name, id, unwrap_msg!(e))
+                    })
+                }
+            },
+            Ok(State::Done) => Err(NormalError{
+                msg:format!("cannot read non-key column {}: invalid id {}",
+                    column_name, id)
+            }),
+            Err(e) => Err(NormalError{
+                msg: format!("cannot read non-key column {}: {}", 
+                    column_name, unwrap_msg!(e))
+            })  
+        }
+    }
+
+    pub fn notate(&'a self, id: i64, column_name: &str, note: &str) -> Result<(), NormalError> {
+        let query = format!("UPDATE {} SET {}=? WHERE rowid={};", self.table_name, column_name, id);
+        let mut statement = self.conn.prepare(query).unwrap();
+        statement.bind(1, note).unwrap();
+        match statement.next() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(NormalError{
+                msg: format!("cannot notate column {}: {}", 
+                    column_name, unwrap_msg!(e))
+            })
         }
     }
 
@@ -84,6 +166,30 @@ fn open(path: &str, table_name: &str, column_name: &str) -> Result<Connection, s
         statement.next()?;
     } // Returning existing connection returns a borrowed value, running statement.drop()
       // outside lifetime, unless we're explicit about statement lifetime.
+    Ok(conn)
+}
+
+fn open_with_nonkeys<'a, T: AsRef<str>>(
+    path: &str, table_name: &str, column_name: &str, nonkeys: impl Iterator<Item = T>
+) -> Result<Connection, sqlite::Error> 
+{ 
+    let conn = open(path, table_name, column_name)?;
+    for nonkey in nonkeys {
+        let query = format!("ALTER TABLE {} ADD COLUMN {} TEXT;", table_name, nonkey.as_ref());
+        let mut statement = conn.prepare(query)?;
+        match statement.next().err() {
+            None => (),
+            Some(alter_err) => {
+                let msg = unwrap_msg!(alter_err);
+                if !msg.starts_with("dup") {
+                    return Err(sqlite::Error{
+                        code: alter_err.code,
+                        message: Some(format!("cannot add nonkey column {}: {}", nonkey.as_ref(), msg)),
+                    })
+                }
+            }
+        }
+    }
     Ok(conn)
 }
 
