@@ -26,7 +26,7 @@ impl<'a> Normal<'a> {
     /// Create a normalization table with extra non-key columns.
     pub fn new_with_nonkeys<'b, T: AsRef<str>>(
         file_name: &str, table_name: &'b str, column_name: &'b str, nonkeys: impl Iterator<Item = T>
-    ) -> Result<Normal<'b>, sqlite::Error> 
+    ) -> Result<Normal<'b>, sqlite::Error>
     {
         Ok(Normal {
             table_name: table_name,
@@ -119,9 +119,9 @@ impl<'a> Normal<'a> {
                     column_name, id)
             }),
             Err(e) => Err(NormalError{
-                msg: format!("cannot read non-key column {}: {}", 
+                msg: format!("cannot read non-key column {}: {}",
                     column_name, unwrap_msg!(e))
-            })  
+            })
         }
     }
 
@@ -133,7 +133,7 @@ impl<'a> Normal<'a> {
         match statement.next() {
             Ok(_) => Ok(()),
             Err(e) => Err(NormalError{
-                msg: format!("cannot notate column {}: {}", 
+                msg: format!("cannot notate column {}: {}",
                     column_name, unwrap_msg!(e))
             })
         }
@@ -162,7 +162,7 @@ fn open(path: &str, table_name: &str, column_name: &str) -> Result<Connection, s
     let query = format!("
             CREATE TABLE IF NOT EXISTS {} ({} TEXT UNIQUE);
             CREATE INDEX IF NOT EXISTS {} ON {} ({});
-            ", 
+            ",
             table_name, column_name, index_name.as_str(), table_name, column_name);
     {
         let mut statement = conn.prepare(query)?;
@@ -175,17 +175,18 @@ fn open(path: &str, table_name: &str, column_name: &str) -> Result<Connection, s
 /// Create a DB connection with non-key columns, adding them if necessary.
 fn open_with_nonkeys<'a, T: AsRef<str>>(
     path: &str, table_name: &str, column_name: &str, nonkeys: impl Iterator<Item = T>
-) -> Result<Connection, sqlite::Error> 
-{ 
+) -> Result<Connection, sqlite::Error>
+{
     let conn = open(path, table_name, column_name)?;
     for nonkey in nonkeys {
         let query = format!("ALTER TABLE {} ADD COLUMN {} TEXT;", table_name, nonkey.as_ref());
-        let mut statement = conn.prepare(query)?;
-        match statement.next().err() {
-            None => (),
-            Some(alter_err) => {
+        match conn.prepare(query) {
+            Ok(mut statement) => {
+                statement.next()?;
+            },
+            Err(alter_err) => {
                 let msg = unwrap_msg!(alter_err);
-                if !msg.starts_with("dup") {
+                if !msg.contains("duplicate column name") {
                     return Err(sqlite::Error{
                         code: alter_err.code,
                         message: Some(format!("cannot add nonkey column {}: {}", nonkey.as_ref(), msg)),

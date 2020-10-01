@@ -1,4 +1,5 @@
 use super::*;
+use tempfile::tempdir;
 
 fn new_table<'a>() -> Result<Normal<'a>, sqlite::Error> {
     Normal::new(":memory:", "names", "name")
@@ -95,6 +96,27 @@ fn create_with_non_key() {
     assert_eq!(norm.get_nonkeys(), nonkeys);
 }
 
+/// It opens an existing table with non-key columns.
+#[test]
+fn open_with_non_key() {
+    let tmpdir = tempdir().unwrap();
+    {
+        let db_path = tmpdir.path().join("normal.sqlite3");
+        let db_name = db_path.to_str().unwrap();
+
+        let nonkeys = ["address", "mantra"];
+        {
+            let norm = Normal::new_with_nonkeys(db_name, "names", "name", nonkeys.iter()).unwrap();
+            assert_eq!(norm.get_nonkeys(), nonkeys);
+        }
+
+        {
+            let norm = Normal::new_with_nonkeys(db_name, "names", "name", nonkeys.iter()).unwrap();
+            assert_eq!(norm.get_nonkeys(), nonkeys);
+        }
+    }
+}
+
 /// It can update non-key columns.
 #[test]
 fn updates_non_key() {
@@ -112,7 +134,7 @@ fn error_on_missing_non_key_value() {
     let norm = Normal::new_with_nonkeys(":memory:", "names", "name", nonkeys.iter()).unwrap();
     let id = norm.create("bilbo").unwrap();
     assert_eq!(
-        norm.get_nonkey(id, nonkeys.get(1).unwrap()).unwrap_err().msg, 
+        norm.get_nonkey(id, nonkeys.get(1).unwrap()).unwrap_err().msg,
         "uninitialized non-key column mantra for id 1: cannot read a text column");
 }
 
@@ -124,4 +146,4 @@ fn error_on_missing_column() {
     assert_eq!(
         norm.get_nonkey(id, "superpower").unwrap_err().msg,
         "missing non-key column superpower");
-} 
+}
