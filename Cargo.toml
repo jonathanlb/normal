@@ -19,6 +19,7 @@ name = "id-pairs-util"
 path = "src/id_pairs_util.rs"
 
 [dependencies]
+regex = "1"
 sqlite = "0.25.3"
 structopt = "0.3.17"
 
