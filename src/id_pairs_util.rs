@@ -75,3 +75,14 @@ fn print_results_or_fail(results: Result<impl Iterator<Item = i64>, NormalError>
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_insertion() {
+        let ids = parse_insertion("11 13".to_string());
+        assert_eq!(ids, (11, 13));
+    }
+}
