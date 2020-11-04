@@ -41,6 +41,20 @@ fn handles_missing_key_get() {
     assert_eq!(pairs.get(87).unwrap().count(), 0);
 }
 
+/// Demonstrate unique key.
+#[test]
+fn handles_unique_key() {
+    let x = 59;
+    let y = 97;
+    let pairs = new_table().unwrap();
+    pairs.insert(x, y).unwrap();
+    pairs.insert(x, y).unwrap();
+
+    let mut i = pairs.get(x).unwrap();
+    assert_eq!(i.next().unwrap(), y);
+    assert_eq!(i.next(), None);
+}
+
 /// Demonstrate panic from SQLite keyword use -- should we fix this.
 #[test]
 #[should_panic(expected = "near \\\"values\\\": syntax error")]

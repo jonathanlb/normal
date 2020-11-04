@@ -32,7 +32,7 @@ impl<'a> IdPairs<'a> {
 
     pub fn insert(&self, key: i64, val: i64) -> Result<(), NormalError> {
         let query = format!(
-            "INSERT INTO {} ({}, {}) VALUES ({}, {});",
+            "INSERT OR IGNORE INTO {} ({}, {}) VALUES ({}, {});",
             self.table_name, self.left_column_name, self.right_column_name, key, val);
         let mut statement = self.conn.prepare(query).unwrap();
         match statement.next() {
@@ -58,11 +58,11 @@ fn open(path: &str, table_name: &str, left_column_name: &str, right_column_name:
     let left_index_name = format!("idx_{}_{}", table_name, left_column_name);
     let right_index_name = format!("idx_{}_{}", table_name, right_column_name);
     let query = format!("
-            CREATE TABLE IF NOT EXISTS {} ({}, INTEGER, {} INTEGER);
+            CREATE TABLE IF NOT EXISTS {} ({} INTEGER, {} INTEGER, UNIQUE({}, {}));
             CREATE INDEX IF NOT EXISTS {} ON {} ({});
             CREATE INDEX IF NOT EXISTS {} ON {} ({});
             ",
-            table_name, left_column_name, right_column_name,
+            table_name, left_column_name, right_column_name, left_column_name, right_column_name,
             left_index_name.as_str(), table_name, left_column_name,
             right_index_name.as_str(), table_name, right_column_name);
     {
