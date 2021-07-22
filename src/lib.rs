@@ -18,14 +18,12 @@
 //! assert_eq!(genres.search("punk").unwrap().next().unwrap(), 3);
 //! ```
 
-
-use std::fmt;
 use sqlite::{Cursor, Value};
+use std::fmt;
 
 #[derive(Clone, Debug)]
 pub struct NormalError {
-    pub msg: String
-    //pub msg: &'static str
+    pub msg: String,
 }
 
 impl fmt::Display for NormalError {
@@ -54,7 +52,7 @@ impl<'a, T> Iterator for SearchIterator<'a, T> {
 fn new_search_iterator<'a>(cursor: Cursor<'a>) -> SearchIterator<'a, i64> {
     SearchIterator {
         cursor: cursor,
-        f: |v: &Value| { v.as_integer() },
+        f: |v: &Value| v.as_integer(),
     }
 }
 

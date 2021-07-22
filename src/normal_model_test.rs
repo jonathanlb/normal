@@ -20,7 +20,6 @@ fn it_inserts_values() {
     assert_eq!(id, 1);
 }
 
-
 /// Demonstrate missing key error.
 #[test]
 fn handles_missing_key_get() {
@@ -40,7 +39,10 @@ fn it_searches() {
 
     assert_eq!(norm.search("%").unwrap().collect::<Vec<i64>>(), vec![id]);
     assert_eq!(norm.search(value).unwrap().collect::<Vec<i64>>(), vec![id]);
-    assert_eq!(norm.search("").unwrap().collect::<Vec<i64>>(), Vec::<i64>::new());
+    assert_eq!(
+        norm.search("").unwrap().collect::<Vec<i64>>(),
+        Vec::<i64>::new()
+    );
 }
 
 /// Document behavior where an iterator is open during an insert operation, bug or feature....
@@ -68,16 +70,6 @@ fn open_cursors_are_updated() {
 #[should_panic(expected = "near \\\"values\\\": syntax error")]
 fn demo_invalid_table_setup() {
     Normal::new(":memory:", "values", "value").unwrap();
-}
-
-/// Demonstrate percolation of sqlite error upon -- fix this.
-#[test]
-#[should_panic(expected = "UNIQUE constraint failed: names.name")]
-fn ensure_unique_keys() {
-    let norm = new_table().unwrap();
-    let key = "jazz";
-    norm.create(key).unwrap();
-    norm.create(key).unwrap();
 }
 
 /// Demonstrate intent of case-sensitive values.
@@ -124,7 +116,10 @@ fn updates_non_key() {
     let norm = Normal::new_with_nonkeys(":memory:", "names", "name", nonkeys.iter()).unwrap();
     let id = norm.create("bilbo").unwrap();
     norm.notate(id, nonkeys.get(0).unwrap(), "Bag End").unwrap();
-    assert_eq!(norm.get_nonkey(id, nonkeys.get(0).unwrap()).unwrap(), "Bag End");
+    assert_eq!(
+        norm.get_nonkey(id, nonkeys.get(0).unwrap()).unwrap(),
+        "Bag End"
+    );
 }
 
 /// It returns error on missing non-key value
@@ -134,8 +129,11 @@ fn error_on_missing_non_key_value() {
     let norm = Normal::new_with_nonkeys(":memory:", "names", "name", nonkeys.iter()).unwrap();
     let id = norm.create("bilbo").unwrap();
     assert_eq!(
-        norm.get_nonkey(id, nonkeys.get(1).unwrap()).unwrap_err().msg,
-        "uninitialized non-key column mantra for id 1: cannot read a text column");
+        norm.get_nonkey(id, nonkeys.get(1).unwrap())
+            .unwrap_err()
+            .msg,
+        "uninitialized non-key column mantra for id 1: cannot read a text column"
+    );
 }
 
 /// It returns error on missing non-key column
@@ -145,5 +143,16 @@ fn error_on_missing_column() {
     let id = norm.create("bilbo").unwrap();
     assert_eq!(
         norm.get_nonkey(id, "superpower").unwrap_err().msg,
-        "missing non-key column superpower");
+        "missing non-key column superpower"
+    );
+}
+
+/// Ignores that we have already inserted a value.
+#[test]
+fn it_ignores_duplicate_values() {
+    let value = "bluegrass";
+    let norm = new_table().unwrap();
+    let id0 = norm.create(value).unwrap();
+    let id1 = norm.create(value).unwrap();
+    assert_eq!(id1, id0);
 }

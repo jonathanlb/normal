@@ -11,7 +11,7 @@ struct Opt {
 
     #[structopt(short, long)]
     get: Option<i64>,
-    
+
     #[structopt(short, long)]
     insert: Option<String>,
 
@@ -34,8 +34,9 @@ pub fn main() {
         opt.db.as_os_str().to_str().unwrap(),
         opt.table.as_str(),
         opt.left.as_str(),
-        opt.right.as_str()).
-        unwrap();
+        opt.right.as_str(),
+    )
+    .unwrap();
 
     opt.insert.map(|insert_pair| {
         let pair = parse_insertion(insert_pair);
@@ -48,18 +49,21 @@ pub fn main() {
         }
     });
 
-    opt.get.map(|left| pairs.get(left)).
-        map(|got| print_results_or_fail(got));
-    
-    opt.search.map(|right| pairs.invert(right)).
-        map(|got| print_results_or_fail(got));
+    opt.get
+        .map(|left| pairs.get(left))
+        .map(|got| print_results_or_fail(got));
+
+    opt.search
+        .map(|right| pairs.invert(right))
+        .map(|got| print_results_or_fail(got));
 }
 
 fn parse_insertion(input: String) -> (i64, i64) {
-    let tokens: Vec<i64> = input.split_whitespace().
-        take(2).
-        map(|s| s.parse::<i64>().unwrap()).
-        collect();
+    let tokens: Vec<i64> = input
+        .split_whitespace()
+        .take(2)
+        .map(|s| s.parse::<i64>().unwrap())
+        .collect();
     (*tokens.get(0).unwrap(), *tokens.get(1).unwrap())
 }
 
