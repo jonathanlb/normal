@@ -44,7 +44,6 @@ impl<'a> Normal<'a> {
     }
 
     /// Insert a new keyword/token and return the associated id.
-    /// Does not, yet, check for previous insertion of value to prevent panic.
     pub fn create(&self, value: &str) -> Result<i64, NormalError> {
         let query = format!(
             "INSERT OR IGNORE INTO {} ({}) VALUES (?);",
@@ -91,7 +90,7 @@ impl<'a> Normal<'a> {
     }
 
     /// Compute the non-key/notation column names.
-    pub fn get_nonkeys(&'a self) -> Vec<String> {
+    pub fn get_nonkeys(&'a self) -> Result<Vec<String>, NormalError> {
         let query = format!("PRAGMA table_info({})", self.table_name);
         let mut statement = self.conn.prepare(query).unwrap();
         let mut nonkeys: Vec<String> = vec![];
@@ -104,8 +103,12 @@ impl<'a> Normal<'a> {
                         nonkeys.push(column.to_string());
                     }
                 }
-                Ok(State::Done) => return nonkeys,
-                Err(e) => panic!(e),
+                Ok(State::Done) => return Ok(nonkeys),
+                Err(e) => {
+                    return Err(NormalError {
+                        msg: format!("cannot get non-key columns: {}", unwrap_msg!(e)),
+                    })
+                }
             }
         }
     }

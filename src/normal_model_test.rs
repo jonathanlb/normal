@@ -85,7 +85,7 @@ fn ensure_keys_case_sensitive() {
 fn create_with_non_key() {
     let nonkeys = ["address", "mantra"];
     let norm = Normal::new_with_nonkeys(":memory:", "names", "name", nonkeys.iter()).unwrap();
-    assert_eq!(norm.get_nonkeys(), nonkeys);
+    assert_eq!(norm.get_nonkeys().unwrap(), nonkeys);
 }
 
 /// It opens an existing table with non-key columns.
@@ -99,12 +99,12 @@ fn open_with_non_key() {
         let nonkeys = ["address", "mantra"];
         {
             let norm = Normal::new_with_nonkeys(db_name, "names", "name", nonkeys.iter()).unwrap();
-            assert_eq!(norm.get_nonkeys(), nonkeys);
+            assert_eq!(norm.get_nonkeys().unwrap(), nonkeys);
         }
 
         {
             let norm = Normal::new_with_nonkeys(db_name, "names", "name", nonkeys.iter()).unwrap();
-            assert_eq!(norm.get_nonkeys(), nonkeys);
+            assert_eq!(norm.get_nonkeys().unwrap(), nonkeys);
         }
     }
 }
