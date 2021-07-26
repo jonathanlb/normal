@@ -90,19 +90,40 @@ impl<'a> Normal<'a> {
         }
     }
 
-    /// Retrieve values for multiple indices.  Not currently optimized.
-    /// XXX requiring client to maintain Vec<Result> seems burdensome
-    pub fn get_bulk(&self, ids: &Vec<i64>, dest: &mut Vec<Result<String, NormalError>>) -> usize {
+    /// Retrieve values for multiple indices, reusing a prepared statement.
+    pub fn get_bulk(
+        &self,
+        ids: &Vec<i64>,
+        dest: &mut Vec<(i64, String)>,
+    ) -> Result<usize, NormalError> {
+        let query = format!(
+            "SELECT rowid, {} FROM {} WHERE rowid = ?",
+            self.column_name, self.table_name
+        );
+        let mut statement = self.conn.prepare(query).unwrap();
+
         let mut count: usize = 0;
-        let dest_len = dest.len();
-        for i in ids {
-            if count >= dest_len {
-                break;
-            }
-            dest[count] = self.get(*i);
-            count += 1;
+        let limit = std::cmp::min(ids.len(), dest.len());
+        let mut i = 0;
+        while i < limit {
+            let key = ids[i];
+            statement.bind(1, key).unwrap();
+            match statement.next() {
+                Ok(State::Row) => {
+                    dest[i] = (key, statement.read::<String>(1).unwrap());
+                    count += 1;
+                }
+                Ok(State::Done) => (),
+                Err(e) => {
+                    return Err(NormalError {
+                        msg: format!("get_bulk failed at {}: {}:", key, unwrap_msg!(e)),
+                    });
+                }
+            };
+            i += 1;
+            statement.reset().unwrap();
         }
-        count
+        Ok(count)
     }
 
     /// Compute the non-key/notation column names.
@@ -114,7 +135,6 @@ impl<'a> Normal<'a> {
             match statement.next() {
                 Ok(State::Row) => {
                     let column = statement.read::<String>(1).unwrap();
-                    println!("schema column: {}", column);
                     if column != self.column_name {
                         nonkeys.push(column.to_string());
                     }

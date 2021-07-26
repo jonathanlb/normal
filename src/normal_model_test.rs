@@ -193,8 +193,50 @@ fn it_gets_in_bulk() {
         norm.create(i).unwrap();
     }
 
-    let mut dst = vec![Ok("".to_string()); 2];
-    assert_eq!(norm.get_bulk(&vec![1, 2], &mut dst), 2);
-    assert_eq!(dst[0].as_ref().unwrap(), "bluegrass");
-    assert_eq!(dst[1].as_ref().unwrap(), "choro");
+    let mut dst = vec![(0, "".to_string()); 2];
+    assert_eq!(norm.get_bulk(&vec![1, 2], &mut dst).unwrap(), 2);
+    assert_eq!(dst[0], (1, "bluegrass".to_string()));
+    assert_eq!(dst[1], (2, "choro".to_string()));
+}
+
+/// Gets bulk with missing key.
+#[test]
+fn it_gets_in_bulk_with_missing_key() {
+    let values = ["bluegrass", "choro", "hip-hop", "jazz", "old-time"];
+    let norm = new_table().unwrap();
+    for i in values {
+        norm.create(i).unwrap();
+    }
+
+    let mut dst = vec![(0, "".to_string()); 2];
+    assert_eq!(norm.get_bulk(&vec![1, 12], &mut dst).unwrap(), 1);
+    assert_eq!(dst[0], (1, "bluegrass".to_string()));
+}
+
+/// Gets bulk with undersized destination
+#[test]
+fn it_gets_in_bulk_with_undersized_dest() {
+    let values = ["bluegrass", "choro", "hip-hop", "jazz", "old-time"];
+    let norm = new_table().unwrap();
+    for i in values {
+        norm.create(i).unwrap();
+    }
+
+    let mut dst = vec![(0, "".to_string()); 1];
+    assert_eq!(norm.get_bulk(&vec![1, 2], &mut dst).unwrap(), 1);
+    assert_eq!(dst[0], (1, "bluegrass".to_string()));
+}
+
+/// Gets bulk with oversized destination
+#[test]
+fn it_gets_in_bulk_with_oversized_dest() {
+    let values = ["bluegrass", "choro", "hip-hop", "jazz", "old-time"];
+    let norm = new_table().unwrap();
+    for i in values {
+        norm.create(i).unwrap();
+    }
+
+    let mut dst = vec![(0, "".to_string()); 4];
+    assert_eq!(norm.get_bulk(&vec![1, 2], &mut dst).unwrap(), 2);
+    assert_eq!(dst[0], (1, "bluegrass".to_string()));
 }
