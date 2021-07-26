@@ -156,3 +156,45 @@ fn it_ignores_duplicate_values() {
     let id1 = norm.create(value).unwrap();
     assert_eq!(id1, id0);
 }
+
+/// Pages search results.
+#[test]
+fn it_pages_search_results() {
+    let values = ["bluegrass", "choro", "hip-hop", "jazz", "old-time"];
+    let norm = new_table().unwrap();
+    for i in values {
+        norm.create(i).unwrap();
+    }
+
+    let mut ids = vec![0; 2];
+    assert_eq!(norm.search_page("%", 1, &mut ids).unwrap(), 2);
+    assert_eq!(ids, vec![2, 3]);
+}
+
+/// Paging search results handles out of range index.
+#[test]
+fn it_handles_oob_paged_search() {
+    let values = ["bluegrass", "choro", "hip-hop", "jazz", "old-time"];
+    let norm = new_table().unwrap();
+    for i in values {
+        norm.create(i).unwrap();
+    }
+
+    let mut ids = vec![0; 2];
+    assert_eq!(norm.search_page("%", 17, &mut ids).unwrap(), 0);
+}
+
+/// Gets bulk.
+#[test]
+fn it_gets_in_bulk() {
+    let values = ["bluegrass", "choro", "hip-hop", "jazz", "old-time"];
+    let norm = new_table().unwrap();
+    for i in values {
+        norm.create(i).unwrap();
+    }
+
+    let mut dst = vec![Ok("".to_string()); 2];
+    assert_eq!(norm.get_bulk(&vec![1, 2], &mut dst), 2);
+    assert_eq!(dst[0].as_ref().unwrap(), "bluegrass");
+    assert_eq!(dst[1].as_ref().unwrap(), "choro");
+}

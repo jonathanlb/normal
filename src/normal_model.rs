@@ -1,5 +1,6 @@
 use crate::{new_search_iterator, NormalError};
 use sqlite::{Connection, State, Value};
+use std::convert::TryInto;
 
 /// Structure for maintaining normalized fields.
 pub struct Normal<'a> {
@@ -89,6 +90,21 @@ impl<'a> Normal<'a> {
         }
     }
 
+    /// Retrieve values for multiple indices.  Not currently optimized.
+    /// XXX requiring client to maintain Vec<Result> seems burdensome
+    pub fn get_bulk(&self, ids: &Vec<i64>, dest: &mut Vec<Result<String, NormalError>>) -> usize {
+        let mut count: usize = 0;
+        let dest_len = dest.len();
+        for i in ids {
+            if count >= dest_len {
+                break;
+            }
+            dest[count] = self.get(*i);
+            count += 1;
+        }
+        count
+    }
+
     /// Compute the non-key/notation column names.
     pub fn get_nonkeys(&'a self) -> Result<Vec<String>, NormalError> {
         let query = format!("PRAGMA table_info({})", self.table_name);
@@ -176,13 +192,54 @@ impl<'a> Normal<'a> {
     /// Use of SQL '%' wildcards is acceptable, and enables substring search.
     pub fn search(&'a self, value: &str) -> Result<impl 'a + Iterator<Item = i64>, NormalError> {
         let query = format!(
-            "SELECT rowid FROM {} WHERE {} like ?",
+            "SELECT rowid FROM {} WHERE {} LIKE ?",
             self.table_name, self.column_name
         );
         let mut cursor = self.conn.prepare(query).unwrap().cursor();
         cursor.bind(&[Value::String(value.to_string())]).unwrap();
 
         Ok(new_search_iterator(cursor))
+    }
+
+    /// Return the ids of tokens matching the search string limited by the
+    /// size of the destination vector and last index seen.
+    /// Use of SQL '%' wildcards is acceptable, and enables substring search.
+    pub fn search_page(
+        &'a self,
+        value: &str,
+        last_idx: i64,
+        dest: &mut Vec<i64>,
+    ) -> Result<usize, NormalError> {
+        let query = format!(
+            "SELECT rowid FROM {} WHERE {} LIKE ? AND rowid > ? ORDER BY rowid LIMIT ?",
+            self.table_name, self.column_name
+        );
+        let mut cursor = self.conn.prepare(query).unwrap().cursor();
+        cursor
+            .bind(&[
+                Value::String(value.to_string()),
+                Value::Integer(last_idx),
+                Value::Integer(dest.len().try_into().unwrap()),
+            ])
+            .unwrap();
+
+        let mut i = 0;
+        let sz = dest.len();
+        while i < sz {
+            match cursor.next() {
+                Ok(Some(row)) => {
+                    dest[i] = row[0].as_integer().unwrap();
+                    i += 1
+                }
+                Ok(None) => return Ok(i),
+                Err(e) => {
+                    return Err(NormalError {
+                        msg: format!("failed to page search value {}: {}", value, unwrap_msg!(e)),
+                    })
+                }
+            }
+        }
+        Ok(i)
     }
 }
 
