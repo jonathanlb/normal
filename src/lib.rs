@@ -49,6 +49,13 @@ impl<'a, T> Iterator for SearchIterator<'a, T> {
     }
 }
 
+/// Boilerplate to safely unwrap sqlite error messages.
+macro_rules! unwrap_msg {
+    ($sql_err:expr) => {
+        $sql_err.message.unwrap_or("???".to_string())
+    };
+}
+
 fn new_search_iterator<'a>(cursor: Cursor<'a>) -> SearchIterator<'a, i64> {
     SearchIterator {
         cursor: cursor,

@@ -24,6 +24,7 @@ impl<'a> IdPairs<'a> {
         })
     }
 
+    /// Look up the values associated with a key.
     pub fn get(&'a self, key: i64) -> Result<impl 'a + Iterator<Item = i64>, NormalError> {
         let query = format!(
             "SELECT {} FROM {} WHERE {}={}",
@@ -34,6 +35,48 @@ impl<'a> IdPairs<'a> {
         Ok(new_search_iterator(cursor))
     }
 
+    /// Look up the values associated with a key and copy them into the
+    /// destination.
+    pub fn get_page(
+        &self,
+        key: i64,
+        min_val: i64,
+        dest: &mut Vec<i64>,
+    ) -> Result<usize, NormalError> {
+        let sz = dest.len();
+        let query = format!(
+            "SELECT {} FROM {} WHERE {}={} AND {} > {} ORDER BY {} LIMIT {}",
+            self.right_column_name,
+            self.table_name,
+            self.left_column_name,
+            key,
+            self.right_column_name,
+            min_val,
+            self.right_column_name,
+            sz
+        );
+        let mut cursor = self.conn.prepare(query).unwrap().cursor();
+        let mut i = 0;
+        while i < sz
+            && match cursor.next() {
+                Ok(Some(row)) => {
+                    dest[i] = row[0].as_integer().unwrap();
+                    true
+                }
+                Ok(None) => false,
+                Err(e) => {
+                    return Err(NormalError {
+                        msg: format!("failed to get_page: {}", unwrap_msg!(e)),
+                    });
+                }
+            }
+        {
+            i += 1;
+        }
+        Ok(i)
+    }
+
+    /// Insert a new key-value pair.
     pub fn insert(&self, key: i64, val: i64) -> Result<(), NormalError> {
         let query = format!(
             "INSERT OR IGNORE INTO {} ({}, {}) VALUES ({}, {});",
@@ -48,6 +91,7 @@ impl<'a> IdPairs<'a> {
         }
     }
 
+    /// Look up the keys associated with a value.
     pub fn invert(&'a self, val: i64) -> Result<impl 'a + Iterator<Item = i64>, NormalError> {
         let query = format!(
             "SELECT {} FROM {} WHERE {}={}",
@@ -56,6 +100,47 @@ impl<'a> IdPairs<'a> {
         let cursor = self.conn.prepare(query).unwrap().cursor();
 
         Ok(new_search_iterator(cursor))
+    }
+
+    /// Look up the keys associated with a value and copy them into the
+    /// destination vector.
+    pub fn invert_page(
+        &self,
+        value: i64,
+        min_key: i64,
+        dest: &mut Vec<i64>,
+    ) -> Result<usize, NormalError> {
+        let sz = dest.len();
+        let query = format!(
+            "SELECT {} FROM {} WHERE {}={} AND {} > {} ORDER BY {} LIMIT {}",
+            self.left_column_name,
+            self.table_name,
+            self.right_column_name,
+            value,
+            self.left_column_name,
+            min_key,
+            self.left_column_name,
+            sz
+        );
+        let mut cursor = self.conn.prepare(query).unwrap().cursor();
+        let mut i = 0;
+        while i < sz
+            && match cursor.next() {
+                Ok(Some(row)) => {
+                    dest[i] = row[0].as_integer().unwrap();
+                    true
+                }
+                Ok(None) => false,
+                Err(e) => {
+                    return Err(NormalError {
+                        msg: format!("failed to invert_page: {}", unwrap_msg!(e)),
+                    });
+                }
+            }
+        {
+            i += 1;
+        }
+        Ok(i)
     }
 }
 

@@ -9,13 +9,6 @@ pub struct Normal<'a> {
     conn: Connection,
 }
 
-/// Boilerplate to safely unwrap sqlite error messages.
-macro_rules! unwrap_msg {
-    ($sql_err:expr) => {
-        $sql_err.message.unwrap_or("???".to_string())
-    };
-}
-
 impl<'a> Normal<'a> {
     /// Create a normalization table from a file name.
     pub fn new<'b>(
