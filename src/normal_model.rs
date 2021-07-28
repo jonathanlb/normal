@@ -1,4 +1,4 @@
-use crate::{new_search_iterator, NormalError};
+use crate::{new_search_string_iterator, NormalError};
 use sqlite::{Connection, State, Value};
 use std::convert::TryInto;
 
@@ -201,17 +201,35 @@ impl<'a> Normal<'a> {
         }
     }
 
-    /// Return the ids of tokens matching the search string.
-    /// Use of SQL '%' wildcards is acceptable, and enables substring search.
-    pub fn search(&'a self, value: &str) -> Result<impl 'a + Iterator<Item = i64>, NormalError> {
+    /// Private function to return an iterator to a search result.
+    fn search_min(
+        &'a self,
+        value: &str,
+        min_idx: i64,
+        max_res: i64,
+    ) -> Result<impl 'a + Iterator<Item = (i64, String)>, NormalError> {
         let query = format!(
-            "SELECT rowid FROM {} WHERE {} LIKE ?",
-            self.table_name, self.column_name
+            "SELECT rowid, {} FROM {} WHERE {} LIKE ? AND rowid > ? ORDER BY rowid LIMIT ?",
+            self.column_name, self.table_name, self.column_name
         );
         let mut cursor = self.conn.prepare(query).unwrap().cursor();
-        cursor.bind(&[Value::String(value.to_string())]).unwrap();
+        cursor
+            .bind(&[
+                Value::String(value.to_string()),
+                Value::Integer(min_idx),
+                Value::Integer(max_res),
+            ])
+            .unwrap();
+        Ok(new_search_string_iterator(cursor))
+    }
 
-        Ok(new_search_iterator(cursor))
+    /// Return the ids of tokens matching the search string.
+    /// Use of SQL '%' wildcards is acceptable, and enables substring search.
+    pub fn search(
+        &'a self,
+        value: &str,
+    ) -> Result<impl 'a + Iterator<Item = (i64, String)>, NormalError> {
+        self.search_min(value, i64::MIN, i64::MAX)
     }
 
     /// Return the ids of tokens matching the search string limited by the
@@ -221,38 +239,25 @@ impl<'a> Normal<'a> {
         &'a self,
         value: &str,
         last_idx: i64,
-        dest: &mut Vec<i64>,
+        dest: &mut Vec<(i64, String)>,
     ) -> Result<usize, NormalError> {
-        let query = format!(
-            "SELECT rowid FROM {} WHERE {} LIKE ? AND rowid > ? ORDER BY rowid LIMIT ?",
-            self.table_name, self.column_name
-        );
-        let mut cursor = self.conn.prepare(query).unwrap().cursor();
-        cursor
-            .bind(&[
-                Value::String(value.to_string()),
-                Value::Integer(last_idx),
-                Value::Integer(dest.len().try_into().unwrap()),
-            ])
-            .unwrap();
-
-        let mut i = 0;
-        let sz = dest.len();
-        while i < sz {
-            match cursor.next() {
-                Ok(Some(row)) => {
-                    dest[i] = row[0].as_integer().unwrap();
-                    i += 1
+        match self.search_min(value, last_idx, dest.len().try_into().unwrap()) {
+            Ok(mut it) => {
+                let mut i = 0;
+                let sz = dest.len();
+                while i < sz {
+                    match it.next() {
+                        Some(pair) => {
+                            dest[i] = pair;
+                            i += 1;
+                        }
+                        _ => return Ok(i),
+                    }
                 }
-                Ok(None) => return Ok(i),
-                Err(e) => {
-                    return Err(NormalError {
-                        msg: format!("failed to page search value {}: {}", value, unwrap_msg!(e)),
-                    })
-                }
+                return Ok(i);
             }
+            Err(e) => return Err(e),
         }
-        Ok(i)
     }
 }
 

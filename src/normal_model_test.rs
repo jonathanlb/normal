@@ -37,11 +37,17 @@ fn it_searches() {
     let id = norm.create(value).unwrap();
     assert_eq!(norm.get(id).unwrap(), value);
 
-    assert_eq!(norm.search("%").unwrap().collect::<Vec<i64>>(), vec![id]);
-    assert_eq!(norm.search(value).unwrap().collect::<Vec<i64>>(), vec![id]);
     assert_eq!(
-        norm.search("").unwrap().collect::<Vec<i64>>(),
-        Vec::<i64>::new()
+        norm.search("%").unwrap().collect::<Vec<(i64, String)>>(),
+        vec![(id, value.to_string())]
+    );
+    assert_eq!(
+        norm.search(value).unwrap().collect::<Vec<(i64, String)>>(),
+        vec![(id, value.to_string())]
+    );
+    assert_eq!(
+        norm.search("").unwrap().collect::<Vec<(i64, String)>>(),
+        Vec::<(i64, String)>::new()
     );
 }
 
@@ -166,9 +172,12 @@ fn it_pages_search_results() {
         norm.create(i).unwrap();
     }
 
-    let mut ids = vec![0; 2];
+    let mut ids = vec![(0, "".to_string()); 2];
     assert_eq!(norm.search_page("%", 1, &mut ids).unwrap(), 2);
-    assert_eq!(ids, vec![2, 3]);
+    assert_eq!(
+        ids,
+        vec![(2, values[1].to_string()), (3, values[2].to_string())]
+    );
 }
 
 /// Paging search results handles out of range index.
@@ -180,7 +189,7 @@ fn it_handles_oob_paged_search() {
         norm.create(i).unwrap();
     }
 
-    let mut ids = vec![0; 2];
+    let mut ids = vec![(0, "".to_string()); 2];
     assert_eq!(norm.search_page("%", 17, &mut ids).unwrap(), 0);
 }
 

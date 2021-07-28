@@ -173,5 +173,3 @@ fn inverts_using_paging_data_limited() {
     let mut keys = vec![0; 2];
     assert_eq!(pairs.invert_page(x, 2 * y0, &mut keys).unwrap(), 0);
 }
-
-

@@ -14,8 +14,8 @@
 //! }
 //!
 //! assert_eq!(genres.search("%").unwrap().count(), 4);
-//! assert_eq!(genres.search("blues").unwrap().next().unwrap(), 1);
-//! assert_eq!(genres.search("punk").unwrap().next().unwrap(), 3);
+//! assert_eq!(genres.search("b%s").unwrap().next().unwrap(), (1, "blues".to_string()));
+//! assert_eq!(genres.search("p%").unwrap().next().unwrap(), (3, "punk".to_string()));
 //! ```
 
 use sqlite::{Cursor, Value};
@@ -34,7 +34,7 @@ impl fmt::Display for NormalError {
 
 struct SearchIterator<'a, T> {
     cursor: Cursor<'a>,
-    f: fn(&Value) -> Option<T>,
+    f: fn(&[Value]) -> Option<T>,
 }
 
 impl<'a, T> Iterator for SearchIterator<'a, T> {
@@ -43,7 +43,7 @@ impl<'a, T> Iterator for SearchIterator<'a, T> {
     fn next(&mut self) -> Option<T> {
         let f = self.f; // cannot pass borrowed value into closure.
         match self.cursor.next() {
-            Ok(row) => row.and_then(|r| (f)(&r[0])),
+            Ok(row) => row.and_then(|r| (f)(r)),
             _ => None,
         }
     }
@@ -59,7 +59,19 @@ macro_rules! unwrap_msg {
 fn new_search_iterator<'a>(cursor: Cursor<'a>) -> SearchIterator<'a, i64> {
     SearchIterator {
         cursor: cursor,
-        f: |v: &Value| v.as_integer(),
+        f: |row: &[Value]| row[0].as_integer(),
+    }
+}
+
+fn new_search_string_iterator<'a>(cursor: Cursor<'a>) -> SearchIterator<'a, (i64, String)> {
+    SearchIterator {
+        cursor: cursor,
+        f: |row: &[Value]| {
+            Some((
+                row[0].as_integer().unwrap(),
+                row[1].as_string().unwrap().to_string(),
+            ))
+        },
     }
 }
 

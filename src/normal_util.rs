@@ -82,10 +82,9 @@ pub fn main() {
                     println!("no key");
                     exit(2);
                 }
-                ip.map(|id| (id, normal.get(id)))
-                    .filter(|r| r.1.is_ok())
-                    .map(|r| (r.0, r.1.unwrap()))
-                    .for_each(|idk| println!("{}: {}", idk.0, idk.1));
+                for i in ip {
+                    println!("{}: {}", i.0, i.1)
+                }
             }
             Err(err) => {
                 println!("error: {}", err.msg);
