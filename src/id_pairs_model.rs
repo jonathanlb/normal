@@ -142,6 +142,88 @@ impl<'a> IdPairs<'a> {
         }
         Ok(i)
     }
+
+    pub fn page_left(
+        &self,
+        min_key: i64,
+        max_key: i64,
+        dest: &mut Vec<(i64, i64)>,
+    ) -> Result<usize, NormalError> {
+        let sz = dest.len();
+        let query = format!(
+            "SELECT {}, {} FROM {} WHERE {} < {} AND {} >= {} ORDER BY {} LIMIT {}",
+            self.left_column_name,
+            self.right_column_name,
+            self.table_name,
+            self.left_column_name,
+            max_key,
+            self.left_column_name,
+            min_key,
+            self.left_column_name,
+            sz
+        );
+        let mut cursor = self.conn.prepare(query).unwrap().cursor();
+        let mut i = 0;
+        while i < sz
+            && match cursor.next() {
+                Ok(Some(row)) => {
+                    dest[i].0 = row[0].as_integer().unwrap();
+                    dest[i].1 = row[1].as_integer().unwrap();
+                    true
+                }
+                Ok(None) => false,
+                Err(e) => {
+                    return Err(NormalError {
+                        msg: format!("failed page_left: {}", unwrap_msg!(e)),
+                    });
+                }
+            }
+        {
+            i += 1;
+        }
+        Ok(i)
+    }
+
+    pub fn page_right(
+        &self,
+        min_key: i64,
+        max_key: i64,
+        dest: &mut Vec<(i64, i64)>,
+    ) -> Result<usize, NormalError> {
+        let sz = dest.len();
+        let query = format!(
+            "SELECT {}, {} FROM {} WHERE {} < {} AND {} >= {} ORDER BY {} LIMIT {}",
+            self.left_column_name,
+            self.right_column_name,
+            self.table_name,
+            self.right_column_name,
+            max_key,
+            self.right_column_name,
+            min_key,
+            self.right_column_name,
+            sz
+        );
+        let mut cursor = self.conn.prepare(query).unwrap().cursor();
+        let mut i = 0;
+        while i < sz
+            && match cursor.next() {
+                Ok(Some(row)) => {
+                    dest[i].0 = row[0].as_integer().unwrap();
+                    dest[i].1 = row[1].as_integer().unwrap();
+                    true
+                }
+                Ok(None) => false,
+                Err(e) => {
+                    return Err(NormalError {
+                        msg: format!("failed page_right: {}", unwrap_msg!(e)),
+                    });
+                }
+            }
+        {
+            i += 1;
+        }
+        Ok(i)
+    }
 }
 
 fn open(

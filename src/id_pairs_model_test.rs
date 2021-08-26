@@ -173,3 +173,36 @@ fn inverts_using_paging_data_limited() {
     let mut keys = vec![0; 2];
     assert_eq!(pairs.invert_page(x, 2 * y0, &mut keys).unwrap(), 0);
 }
+
+#[test]
+fn enumerates_by_left_column() {
+    let x0 = 17;
+    let x1 = 13;
+    let y0 = 19;
+    let y1 = 7;
+
+    let pairs = new_table().unwrap();
+    pairs.insert(x0, y0).unwrap();
+    pairs.insert(x1, y1).unwrap();
+
+    let mut dst = vec![(0, 0); 2];
+    assert_eq!(pairs.page_left(0, 100, &mut dst).unwrap(), 2);
+    assert_eq!(dst[0], (13, 7));
+    assert_eq!(dst[1], (17, 19));
+}
+#[test]
+fn enumerates_by_right_column() {
+    let x0 = 17;
+    let x1 = 13;
+    let y0 = 7;
+    let y1 = 19;
+
+    let pairs = new_table().unwrap();
+    pairs.insert(x0, y0).unwrap();
+    pairs.insert(x1, y1).unwrap();
+
+    let mut dst = vec![(0, 0); 2];
+    assert_eq!(pairs.page_right(0, 100, &mut dst).unwrap(), 2);
+    assert_eq!(dst[0], (17, 7));
+    assert_eq!(dst[1], (13, 19));
+}
